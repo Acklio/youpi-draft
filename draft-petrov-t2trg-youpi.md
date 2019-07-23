@@ -189,7 +189,7 @@ leaf temp {
     type uint8;
     default -19;
     description "The temperature";
-    youpi:position "1..7";
+    youpi:position "relative 1..7";
 }
 ~~~~
 
