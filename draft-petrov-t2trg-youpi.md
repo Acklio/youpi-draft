@@ -199,37 +199,13 @@ This means that the value starts 1 bit after the current cursor and will read up
 
 Can be used to change the order in which fields are processed. By default the order in which fields appear in the document is the order in which they are processed.
 
-## Condition
-
-Inside a choice statement, the condition extension gives information based on what value the choice will be decided.
-
-For example considering that there is a value "mode" with the value of btn inside the model
-
-~~~~ yang
-choice data {
-    case _btn {
-	container button-data {
-	...
-	}
-    }
-    case _temp {
-	container temperature-data {
-	    ...
-	}
-    }
-    youpi:condition "mode";
-}
-~~~~
-
-Then the button-data container will be used to parse the data.
-
-## Multiplier
+## Multiplier {#multiplier}
 
 A value or another field by which a given field needs to be multiplied before
 the final value is obtained. The operations are executed in the order of
 appearance (this includes "offset" extension defined in {{offset}}).
 
-## Offset
+## Offset {#offset}
 
 A value or another field to which a given field needs to be added before
 the final value is obtained. The operations are executed in the order of
@@ -239,9 +215,194 @@ appearance (this includes "offset" extension defined in {{offset}}).
 
 Meta information used to compute JSON-LD.
 
-## Lists
+## Data definitions
 
-TBD
+### Supported built-in type
+
+* binary
+* enumeration
+* int8
+* int16
+* int32
+* int64
+* string
+* uint8
+* uint16
+* uint32
+* uint64
+
+### Leafs
+
+Simple fields like integers and strings are represented by leafs in YOUPI.
+
+### Type min/max values
+
+`range` attribute can be used for giving a `min`/`max` acceptable value for a
+type. If the value is outside of the defined range, it is silently excluded
+from the final result.
+
+Example:
+
+~~~~
+  typedef temp {
+      type int8 {
+          range "-20 .. 107";
+      }
+  }
+~~~~
+
+### Type fraction digits
+
+It is possible to specify how many fraction digits are expected for a value to
+have.
+
+Example:
+
+~~~~
+  leaf temp {
+      type decimal64 {
+          fraction-digits 2;
+      }
+  }
+~~~~
+
+### Containers
+
+Complex fields like objects are represented by containers in YOUPI.
+
+### Condition
+
+#### Choice
+
+Inside a choice statement, the condition extension gives information based on what value the choice will be decided.
+
+For example considering that there is a value "mode" with the value of btn inside the model
+
+~~~~ yang
+leaf mode {
+    ...
+}
+choice data {
+    case _btn {
+        container button-data {
+            ...
+        }
+    }
+    case _temp {
+        container temperature-data {
+            ...
+        }
+    }
+    youpi:condition "../mode";
+}
+~~~~
+
+Then the button-data container will be used to parse the data.
+
+#### When
+
+With when statement it is possible to link the presence of some piece of data
+to a value of another field. For example it is possible to have button-data or
+temperature-data depending of the value of the mode field.
+
+~~~~ yang
+container button-data {
+    when "../mode[.=1]"
+    ...
+}
+container temperature-data {
+    when "../mode[.=2]"
+    ...
+}
+~~~~
+
+### Lists
+
+List statements are supported and they generate an array of a given composite
+type.
+
+#### With explicit length {#list-explicit-len}
+
+A list of minimum and maximum temperatures can be defined as:
+
+~~~~ yang
+leaf temperature-len {
+    type int32;
+}
+
+list temperatures {
+    youpi:length "../temperatures-len";
+    leaf min-value {
+        type int32;
+    }
+    leaf max-value {
+        type int32;
+    }
+}
+~~~~
+
+#### Until the end of input
+
+The list as defined in {{list-explicit-len}} can omit the length extension
+statement if all the remaining bytes in the payload are part of the list.
+
+#### Until a specific value
+
+The list as defined in {{list-explicit-len}} can also omit the length if it has
+a defined key and if it only has one leaf or container in the list apart from
+the key and it is a subject to when statement that defines a stop value for the
+key.
+
+~~~~ yang
+list temperatures {
+    key option-id;
+    leaf option-id {
+        type int32;
+    }
+    container value {
+        when "../option-id[.!=0xffffffff]";
+        ...
+    }
+}
+~~~~
+
+### Enumerations as mappings
+
+Enumerations can be used inside a typedef in order to restrict a field only to
+a set of acceptable values or in order to accomplish mapping between some
+values and other values (for example 0 stands for "temperature", 1 stands for
+"humidity", etc).
+
+Example:
+
+~~~~
+    typedef mode-type {
+        type enumeration {
+            enum temp {
+                value 0;
+            }
+            enum humidity {
+                value 1;
+            }
+            enum light {
+                value 2;
+            }
+            ...
+        }
+        ...
+    }
+~~~~
+
+### Groupings
+
+Groupings can be used for better reuse of definitions. They don't affect the
+generated output.
+
+### Typedefs
+
+Typedefs can be used to provide extra information about the type of a field,
+including semantic information about it.
+
 
 # Security Considerations
 
@@ -255,3 +416,13 @@ Resource exhaustion can be looked for.
 # IANA Considerations
 
 This document registers a YANG model.
+
+# Acknowledgements
+{:numbered="false"}
+
+# Contributors
+{:numbered="false"}
+
+--- back
+
+# Complete examples
